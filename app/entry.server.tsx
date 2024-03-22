@@ -6,11 +6,20 @@
 
 import { PassThrough } from "node:stream";
 
-import type { AppLoadContext, EntryContext } from "@remix-run/node";
-import { createReadableStreamFromReadable } from "@remix-run/node";
+import type { EntryContext } from "@remix-run/node";
 import { RemixServer } from "@remix-run/react";
 import { isbot } from "isbot";
 import { renderToPipeableStream } from "react-dom/server";
+import {
+  createReadableStreamFromReadable,
+/* --- INCLUDE THIS --- */
+  createCookie,
+} from "@remix-run/node";
+import { setLangServerCookie, getContextLang } from 'remix-paraglidejs/server';
+import { setLanguageTag, availableLanguageTags } from "../paraglide/runtime";
+
+// language-tag value the same as the one in the entry.client.tsx
+export const setLangCookie = createCookie("language-tag", {});
 
 const ABORT_DELAY = 5_000;
 
@@ -18,11 +27,7 @@ export default function handleRequest(
   request: Request,
   responseStatusCode: number,
   responseHeaders: Headers,
-  remixContext: EntryContext,
-  // This is ignored so we can keep it in the template for visibility.  Feel
-  // free to delete this parameter in your app if you're not using it!
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  loadContext: AppLoadContext
+  remixContext: EntryContext
 ) {
   return isbot(request.headers.get("user-agent") || "")
     ? handleBotRequest(
@@ -47,6 +52,14 @@ function handleBotRequest(
 ) {
   return new Promise((resolve, reject) => {
     let shellRendered = false;
+    const lang = getContextLang(remixContext, {
+      defaultValue: availableLanguageTags[0],
+      availableLanguages: availableLanguageTags,
+      // The URL parameter to look for when determining the language
+      // for example ($lang)._index.tsx
+      urlParam: 'lang',
+    });
+    setLanguageTag(lang);
     const { pipe, abort } = renderToPipeableStream(
       <RemixServer
         context={remixContext}
@@ -54,12 +67,13 @@ function handleBotRequest(
         abortDelay={ABORT_DELAY}
       />,
       {
-        onAllReady() {
+        async onAllReady() {
           shellRendered = true;
           const body = new PassThrough();
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          await setLangServerCookie(lang, responseHeaders, setLangCookie);
 
           resolve(
             new Response(stream, {
