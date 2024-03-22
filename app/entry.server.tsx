@@ -52,14 +52,6 @@ function handleBotRequest(
 ) {
   return new Promise((resolve, reject) => {
     let shellRendered = false;
-    const lang = getContextLang(remixContext, {
-      defaultValue: availableLanguageTags[0],
-      availableLanguages: availableLanguageTags,
-      // The URL parameter to look for when determining the language
-      // for example ($lang)._index.tsx
-      urlParam: 'lang',
-    });
-    setLanguageTag(lang);
     const { pipe, abort } = renderToPipeableStream(
       <RemixServer
         context={remixContext}
@@ -67,13 +59,12 @@ function handleBotRequest(
         abortDelay={ABORT_DELAY}
       />,
       {
-        async onAllReady() {
+        onAllReady() {
           shellRendered = true;
           const body = new PassThrough();
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
-          await setLangServerCookie(lang, responseHeaders, setLangCookie);
 
           resolve(
             new Response(stream, {
@@ -111,6 +102,14 @@ function handleBrowserRequest(
 ) {
   return new Promise((resolve, reject) => {
     let shellRendered = false;
+    const lang = getContextLang(remixContext, {
+      defaultValue: availableLanguageTags[0],
+      availableLanguages: availableLanguageTags,
+      // The URL parameter to look for when determining the language
+      // for example ($lang)._index.tsx
+      urlParam: 'lang',
+    });
+    setLanguageTag(lang);
     const { pipe, abort } = renderToPipeableStream(
       <RemixServer
         context={remixContext}
@@ -118,12 +117,13 @@ function handleBrowserRequest(
         abortDelay={ABORT_DELAY}
       />,
       {
-        onShellReady() {
+        async onShellReady() {
           shellRendered = true;
           const body = new PassThrough();
           const stream = createReadableStreamFromReadable(body);
 
           responseHeaders.set("Content-Type", "text/html");
+          await setLangServerCookie(lang, responseHeaders, setLangCookie);
 
           resolve(
             new Response(stream, {

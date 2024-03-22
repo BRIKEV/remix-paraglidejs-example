@@ -1,4 +1,6 @@
 {
+  "$schema": "https://inlang.com/schema/inlang-message-format",
   "title": "Remix web de ejemplo",
-  "description": "Este es un ejemplo de una web de remix"
+  "description": "Este es un ejemplo de una web de remix",
+  "messageBody": "En esta página encontrará la configuración básica de ParaglideJS."
 }
